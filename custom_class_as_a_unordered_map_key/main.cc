@@ -41,12 +41,15 @@ namespace std {
 
 int main() {
 	struct Key key;
+	struct Key dummy;
 	key.first = "f";
 	key.second = "s";
 	key.third = 3;
 
 	unordered_map<struct Key, bool> mymap;
 	mymap[key] = true;
+	cout << mymap[key] << endl;
+	cout << mymap[dummy] << endl;
 
 	return 0;
 }
