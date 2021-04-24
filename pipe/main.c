@@ -6,33 +6,29 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
-#define NP 3
+#define NP 5
 
 int filefd;
 
 void loop (int pid, int dest_init_flag, char state, int c0_r, int c0_w, int c1_r, int c1_w) {
   char buf, word;
   while (1) {
+    usleep(10);
     if (state == 'd') {
-      printf("%d wating from right i am in %c\n", getpid(), state);
       read(c1_r, &buf, sizeof(buf)); 
     }
     else if (state == 'w' || state == 's') {
-      printf("%d wating from left i am in %c\n", getpid(), state);
       read(c0_r, &buf, sizeof(buf));
     }
     else if (state == 'e' &&  dest_init_flag) {
-      printf("%d wating from left i am in %c\n", getpid(), state);
       read(c0_r, &buf, sizeof(buf));
     }
     else if (state == 'e' &&  !dest_init_flag) {
-      printf("%d wating from right i am in %c\n", getpid(), state);
       read(c1_r, &buf, sizeof(buf));
     }
     
     /* Keep writing */
     if (buf == 'w') {
-      printf("%d GET W i am %c!!!!...\n", getpid(), state);
       assert(state == 'w');
       int is_first = 1;
       while  (1) {
@@ -57,7 +53,6 @@ void loop (int pid, int dest_init_flag, char state, int c0_r, int c0_w, int c1_r
     }
     /* Start pending */
     else if (buf == 's') {
-      printf("%d GET S i am %c!!!!...\n", getpid(), state);
       assert(state == 'w' || state == 's');
       if (state == 's') {
         write(c1_w, "e", sizeof(char));
@@ -70,7 +65,6 @@ void loop (int pid, int dest_init_flag, char state, int c0_r, int c0_w, int c1_r
     }
     /* Exiting */
     else if (buf == 'e') {
-      printf("%d GET E i am %c!!!!...\n", getpid(), state);
       assert(state == 's' || state == 'e' || state == 'd');
       if (state == 'd') 
         return;
@@ -124,7 +118,7 @@ main(int argc, char *argv[])
   c1_r = dup(p1[0]);
   c1_w = dup(p1[1]);
 
-  for (int i = 0 ; i < NP ; i++) {
+  for (int i = 0 ; i < NP - 1 ; i++) {
     pipe(p2);
     cpid = fork();
     if (cpid == -1) {
