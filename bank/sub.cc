@@ -3,7 +3,7 @@
 #include <time.h>
 
 // 시간 관리를 위한 변수들
-int finished_people_num = 0, people_num = 0, total_time_waited = 0;
+int finished_people_num = 0, people_num = 0, waited_min = 0;
 
 // 현재 시간 (분)
 int cur_time = 0;
@@ -80,7 +80,7 @@ void execute() {
     struct atm *cur_atm = patms[i];
     int waiting_people_num = cur_atm->people_waiting - 1;
     if (waiting_people_num > 0) {
-      total_time_waited += waiting_people_num;
+      waited_min += waiting_people_num;
     }
     if (cur_atm->head) {
       if ((cur_atm->head->remaining_min)-- <= 0) {
@@ -121,7 +121,7 @@ int main() {
   }
 
   printf("총 %d 명의 사람이 업무를 보았습니다.\n", finished_people_num);
-  printf("평균 %f 분을 기다렸습니다. \n", (float)total_time_waited / people_num);
+  printf("평균 %f 분을 기다렸습니다. \n", (float)waited_min / people_num);
   printf("총 %d 명이 기다리고 있습니다. \n", numWaiting());
   
   for (int i = 0 ; i < 3 ; i++) {
