@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
-
 #define NP 2
 
   int
@@ -57,7 +56,7 @@ main(int argc, char *argv[])
           assert(state == 'w');
           while  (1) {
             int ret = read(filefd, &word, 1);
-            if (ret == EOF) { 
+            if (ret == 0) { 
               assert(0);
               write(p2[1], "s", sizeof(char));
               state = 's';
@@ -97,8 +96,8 @@ main(int argc, char *argv[])
       }
     }
     else {
-      p1[0] = p2[0];
-      p1[1] = p2[1];
+      //p1[0] = p2[0];
+      //p1[1] = p2[1];
     }
   }
 
@@ -109,7 +108,7 @@ main(int argc, char *argv[])
     if (i == 0) {
       while  (1) {
         int ret = read(filefd, &word, 1);
-        if (ret == EOF) { 
+        if (ret == 0) { 
           write(c1_w, "s", sizeof(char));
           state = 's';
           break; 
@@ -127,7 +126,7 @@ main(int argc, char *argv[])
       assert(state == 'w');
       while  (1) {
         int ret = read(filefd, &word, 1);
-        if (ret == EOF) { 
+        if (ret == 0) { 
           write(c1_w, "s", sizeof(char));
           state = 's';
           break; 
@@ -172,10 +171,5 @@ main(int argc, char *argv[])
 
 
 
-  while (1) {
-    read(cn_r, &buf, sizeof(buf));
-    close(filefd);
-
-  }
   return 0;
 }
