@@ -8,10 +8,60 @@
 #include <assert.h>
 #define NP 2
 
+int filefd;
+
+void loop (char state, int c0_r, int c1_w) {
+  char buf, word;
+  while (1) {
+    read(c0_r, &buf, sizeof(buf));
+    /* Keep writing */
+    if (buf == 'w') {
+      assert(state == 'w');
+      while  (1) {
+        int ret = read(filefd, &word, 1);
+        if (ret == 0) { 
+          assert(0);
+          write(c1_w, "s", sizeof(char));
+          state = 's';
+          break; 
+        }
+        printf("%c", word);
+        if (word == '\n') { 
+          write(c1_w, "w", sizeof(char));
+          printf("pid: %d wrote..\n", getpid());
+          break; 
+        }
+      }
+    }
+    /* Start pending */
+    else if (buf == 's') {
+      assert(state == 'w' || state == 's');
+      if (state == 's') {
+        write(c1_w, "e", sizeof(char));
+        state = 'e';
+      }
+      else {
+        write(c1_w, "s", sizeof(char));
+        state = 's';
+      }
+    }
+    /* Exiting */
+    else if (buf == 'e') {
+      assert(state == 's' || state == 'e');
+      if (state == 'e') {
+        //write(c0_w, "e", sizeof(char));
+        //exit(0);
+      }
+      else {
+        write(c1_w, "e", sizeof(char));
+        state = 'e';
+      }
+    }
+  }
+}
   int
 main(int argc, char *argv[])
 {
-  int filefd;
   int p1[2];
   int p2[2];
   int c0_r;
@@ -51,60 +101,17 @@ main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
     else if (cpid == 0) {
-      if (i != 0) {
-        c0_r = dup(p1[0]);
-        c0_w = dup(p1[1]);
-      }
+      c0_r = dup(p1[0]);
+      c0_w = dup(p1[1]);
+      
       c1_r = dup(p2[0]);
       c1_w = dup(p2[1]);
+      
       p1[0] = p2[0];
       p1[1] = p2[1];
-      while (1) {
-        read(c0_r, &buf, sizeof(buf));
-        /* Keep writing */
-        if (buf == 'w') {
-          assert(state == 'w');
-          while  (1) {
-            int ret = read(filefd, &word, 1);
-            if (ret == 0) { 
-              assert(0);
-              write(c1_w, "s", sizeof(char));
-              state = 's';
-              break; 
-            }
-            printf("%c", word);
-            if (word == '\n') { 
-              write(c1_w, "w", sizeof(char));
-              printf("pid: %d wrote..\n", getpid());
-              break; 
-            }
-          }
-        }
-        /* Start pending */
-        else if (buf == 's') {
-          assert(state == 'w' || state == 's');
-          if (state == 's') {
-            write(c1_w, "e", sizeof(char));
-            state = 'e';
-          }
-          else {
-            write(c1_w, "s", sizeof(char));
-            state = 's';
-          }
-        }
-        /* Exiting */
-        else if (buf == 'e') {
-          assert(state == 's' || state == 'e');
-          if (state == 'e') {
-            //write(c0_w, "e", sizeof(char));
-            //exit(0);
-          }
-          else {
-            write(c1_w, "e", sizeof(char));
-            state = 'e';
-          }
-        }
-      }
+      /* ------------------------ */
+      loop(state, c0_r, c1_w);
+      /* ------------------------ */
     }
     else {
       p1[0] = p2[0];
@@ -115,66 +122,25 @@ main(int argc, char *argv[])
   c0_r = p2[0];
   c0_w = p2[1];
 
-  for (int i = 0 ; ; i++) {
-    if (i == 0) {
-      while  (1) {
-        int ret = read(filefd, &word, 1);
-        if (ret == 0) { 
-          write(c1_w, "s", sizeof(char));
-          state = 's';
-          break; 
-        }
-        printf("%c", word);
-        if (word == '\n') { 
-          write(c1_w, "w", sizeof(char));
-          break; 
-        }
-      }
+
+
+  while  (1) {
+    int ret = read(filefd, &word, 1);
+    if (ret == 0) { 
+      write(c1_w, "s", sizeof(char));
+      state = 's';
+      break; 
     }
-    read(c0_r, &buf, sizeof(buf));
-    /* Keep writing */
-    if (buf == 'w') {
-      assert(state == 'w');
-      while  (1) {
-        int ret = read(filefd, &word, 1);
-        if (ret == 0) { 
-          write(c1_w, "s", sizeof(char));
-          state = 's';
-          break; 
-        }
-        printf("%c", word);
-        if (word == '\n') { 
-          write(c1_w, "w", sizeof(char));
-          break; 
-        }
-      }
-    }
-    /* Start pending */
-    else if (buf == 's') {
-      assert(state == 'w' || state == 's');
-      if (state == 's') {
-        write(c1_w, "e", sizeof(char));
-        state = 'e';
-      }
-      else {
-        write(c1_w, "s", sizeof(char));
-        state = 's';
-      }
-    }
-    /* Exiting */
-    else if (buf == 'e') {
-      assert(state == 's' || state == 'e');
-      if (state == 'e') {
-        //write(c0_w, "e", sizeof(char));
-        //exit(0);
-      }
-      else {
-        write(c1_w, "e", sizeof(char));
-        state = 'e';
-      }
+    printf("%c", word);
+    if (word == '\n') { 
+      write(c1_w, "w", sizeof(char));
+      break; 
     }
   }
 
+  /* ------------------------ */
+  loop(state, c0_r, c1_w);
+  /* ------------------------ */
 
 
 
