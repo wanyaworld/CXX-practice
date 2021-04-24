@@ -6,35 +6,58 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
-#define NP 2
+#define NP 3
 
 int filefd;
 
-void loop (char state, int c0_r, int c1_w) {
+void loop (int pid, int dest_init_flag, char state, int c0_r, int c0_w, int c1_r, int c1_w) {
   char buf, word;
   while (1) {
-    read(c0_r, &buf, sizeof(buf));
+    if (state == 'd') {
+      printf("%d wating from right i am in %c\n", getpid(), state);
+      read(c1_r, &buf, sizeof(buf)); 
+    }
+    else if (state == 'w' || state == 's') {
+      printf("%d wating from left i am in %c\n", getpid(), state);
+      read(c0_r, &buf, sizeof(buf));
+    }
+    else if (state == 'e' &&  dest_init_flag) {
+      printf("%d wating from left i am in %c\n", getpid(), state);
+      read(c0_r, &buf, sizeof(buf));
+    }
+    else if (state == 'e' &&  !dest_init_flag) {
+      printf("%d wating from right i am in %c\n", getpid(), state);
+      read(c1_r, &buf, sizeof(buf));
+    }
+    
     /* Keep writing */
     if (buf == 'w') {
+      printf("%d GET W i am %c!!!!...\n", getpid(), state);
       assert(state == 'w');
+      int is_first = 1;
       while  (1) {
         int ret = read(filefd, &word, 1);
         if (ret == 0) { 
-          assert(0);
           write(c1_w, "s", sizeof(char));
           state = 's';
+          dest_init_flag = 1;
+          printf("Read all data\n");
           break; 
+        }
+        if (is_first) {
+          printf("%d ", getpid());
+          is_first = 0;
         }
         printf("%c", word);
         if (word == '\n') { 
           write(c1_w, "w", sizeof(char));
-          printf("pid: %d wrote..\n", getpid());
           break; 
         }
       }
     }
     /* Start pending */
     else if (buf == 's') {
+      printf("%d GET S i am %c!!!!...\n", getpid(), state);
       assert(state == 'w' || state == 's');
       if (state == 's') {
         write(c1_w, "e", sizeof(char));
@@ -47,10 +70,18 @@ void loop (char state, int c0_r, int c1_w) {
     }
     /* Exiting */
     else if (buf == 'e') {
-      assert(state == 's' || state == 'e');
+      printf("%d GET E i am %c!!!!...\n", getpid(), state);
+      assert(state == 's' || state == 'e' || state == 'd');
+      if (state == 'd') 
+        return;
       if (state == 'e') {
-        //write(c0_w, "e", sizeof(char));
-        //exit(0);
+        write(c0_w, "e", sizeof(char));
+        if (pid == 0) {
+          printf("%d I'm exiting...\n", getpid());
+          exit(0);
+        }
+        else 
+          state = 'd';
       }
       else {
         write(c1_w, "e", sizeof(char));
@@ -110,7 +141,7 @@ main(int argc, char *argv[])
       p1[0] = p2[0];
       p1[1] = p2[1];
       /* ------------------------ */
-      loop(state, c0_r, c1_w);
+      loop(cpid, dest_init_flag, state, c0_r, c0_w, c1_r, c1_w);
       /* ------------------------ */
     }
     else {
@@ -124,12 +155,17 @@ main(int argc, char *argv[])
 
 
 
+  int is_first = 1;
   while  (1) {
     int ret = read(filefd, &word, 1);
     if (ret == 0) { 
       write(c1_w, "s", sizeof(char));
       state = 's';
       break; 
+    }
+    if (is_first) {
+      printf("%d  ", getpid());
+      is_first = 0;
     }
     printf("%c", word);
     if (word == '\n') { 
@@ -139,13 +175,15 @@ main(int argc, char *argv[])
   }
 
   /* ------------------------ */
-  loop(state, c0_r, c1_w);
+  loop(cpid, dest_init_flag, state, c0_r, c0_w, c1_r, c1_w);
   /* ------------------------ */
 
-
-
-
-
+  assert(cpid != 0 && "only parent can go to here");
+  int status;
+  for (int i = 0 ; i < NP ; i++)
+    wait(&status);
+  
+  printf("%d I'm exiting...\n", getpid());
 
 
   return 0;
