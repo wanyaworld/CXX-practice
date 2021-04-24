@@ -14,15 +14,17 @@ main(int argc, char *argv[])
   int filefd;
   int p1[2];
   int p2[2];
+  int c0_r;
+  int c0_w;
   int c1_r;
   int c1_w;
-  int cn_r;
-  int cn_w;
   pid_t cpid;
   char buf;
   char word;
   /* w: write, s: start pending, e: exiting */
   char state = 'w';
+  /* process with this flag set true will init the destroy phase. */
+  int dest_init_flag = 0;
 
   if (argc != 2) {
     fprintf(stderr, "Usage: %s <string>\n", argv[0]);
@@ -49,8 +51,16 @@ main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
     else if (cpid == 0) {
+      if (i != 0) {
+        c0_r = dup(p1[0]);
+        c0_w = dup(p1[1]);
+      }
+      c1_r = dup(p2[0]);
+      c1_w = dup(p2[1]);
+      p1[0] = p2[0];
+      p1[1] = p2[1];
       while (1) {
-        read(p1[0], &buf, sizeof(buf));
+        read(c0_r, &buf, sizeof(buf));
         /* Keep writing */
         if (buf == 'w') {
           assert(state == 'w');
@@ -58,13 +68,14 @@ main(int argc, char *argv[])
             int ret = read(filefd, &word, 1);
             if (ret == 0) { 
               assert(0);
-              write(p2[1], "s", sizeof(char));
+              write(c1_w, "s", sizeof(char));
               state = 's';
               break; 
             }
             printf("%c", word);
             if (word == '\n') { 
-              write(p2[1], "w", sizeof(char));
+              write(c1_w, "w", sizeof(char));
+              printf("pid: %d wrote..\n", getpid());
               break; 
             }
           }
@@ -73,11 +84,11 @@ main(int argc, char *argv[])
         else if (buf == 's') {
           assert(state == 'w' || state == 's');
           if (state == 's') {
-            write(p2[1], "e", sizeof(char));
+            write(c1_w, "e", sizeof(char));
             state = 'e';
           }
           else {
-            write(p2[1], "s", sizeof(char));
+            write(c1_w, "s", sizeof(char));
             state = 's';
           }
         }
@@ -85,24 +96,24 @@ main(int argc, char *argv[])
         else if (buf == 'e') {
           assert(state == 's' || state == 'e');
           if (state == 'e') {
-            //write(p2[1], "e", sizeof(char));
+            //write(c0_w, "e", sizeof(char));
             //exit(0);
           }
           else {
-            write(p2[1], "e", sizeof(char));
+            write(c1_w, "e", sizeof(char));
             state = 'e';
           }
         }
       }
     }
     else {
-      //p1[0] = p2[0];
-      //p1[1] = p2[1];
+      p1[0] = p2[0];
+      p1[1] = p2[1];
     }
   }
 
-  cn_r = p2[0];
-  cn_w = p2[1];
+  c0_r = p2[0];
+  c0_w = p2[1];
 
   for (int i = 0 ; ; i++) {
     if (i == 0) {
@@ -120,7 +131,7 @@ main(int argc, char *argv[])
         }
       }
     }
-    read(cn_r, &buf, sizeof(buf));
+    read(c0_r, &buf, sizeof(buf));
     /* Keep writing */
     if (buf == 'w') {
       assert(state == 'w');
@@ -154,7 +165,7 @@ main(int argc, char *argv[])
     else if (buf == 'e') {
       assert(state == 's' || state == 'e');
       if (state == 'e') {
-        //write(c1_w, "e", sizeof(char));
+        //write(c0_w, "e", sizeof(char));
         //exit(0);
       }
       else {
