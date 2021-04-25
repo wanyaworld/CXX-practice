@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
-#define NP 5
+#define NP 14
 
 int filefd;
 
@@ -14,19 +14,13 @@ void loop (int pid, int dest_init_flag, char state, int c0_r, int c0_w, int c1_r
   char buf, word;
   while (1) {
     usleep(10);
-    if (state == 'd') {
-      read(c1_r, &buf, sizeof(buf)); 
-    }
-    else if (state == 'w' || state == 's') {
+    if (state == 'w' || state == 's' || state == 'e') {
       read(c0_r, &buf, sizeof(buf));
     }
-    else if (state == 'e' &&  dest_init_flag) {
-      read(c0_r, &buf, sizeof(buf));
-    }
-    else if (state == 'e' &&  !dest_init_flag) {
+    else if (state == 'x') {
       read(c1_r, &buf, sizeof(buf));
     }
-    
+
     /* Keep writing */
     if (buf == 'w') {
       assert(state == 'w');
@@ -36,7 +30,6 @@ void loop (int pid, int dest_init_flag, char state, int c0_r, int c0_w, int c1_r
         if (ret == 0) { 
           write(c1_w, "s", sizeof(char));
           state = 's';
-          dest_init_flag = 1;
           printf("Read all data\n");
           break; 
         }
@@ -65,21 +58,50 @@ void loop (int pid, int dest_init_flag, char state, int c0_r, int c0_w, int c1_r
     }
     /* Exiting */
     else if (buf == 'e') {
-      assert(state == 's' || state == 'e' || state == 'd');
-      if (state == 'd') 
-        return;
-      if (state == 'e') {
-        write(c0_w, "e", sizeof(char));
-        if (pid == 0) {
-          printf("%d I'm exiting...\n", getpid());
-          exit(0);
-        }
-        else 
-          state = 'd';
+      assert(state == 's' || state == 'e');
+      if (state == 's') {
+        write(c1_w, "e", sizeof(char));
+        state = 'e';
+        continue;
+      }
+      if (dest_init_flag) {
+        write(c1_w, "x", sizeof(char));
+        write(c0_w, "q", sizeof(char));
+        printf("%d I'm exiting...\n", getpid());
+        exit(0);
       }
       else {
         write(c1_w, "e", sizeof(char));
-        state = 'e';
+        state = 'x';
+      }
+    }
+    else if (buf = 'x') {
+      if (dest_init_flag) {
+        assert(0);
+      }
+      else {
+        state = 'x';
+        if (pid == 0) {
+          printf("%d I'm exiting...\n", getpid());
+          write(c1_w, "x", sizeof(char));
+          write(c0_w, "x", sizeof(char));
+          exit(0);
+        }
+        else {
+          write(c1_w, "x", sizeof(char));
+          write(c0_w, "x", sizeof(char));
+          return;
+        }
+      }
+    }
+    else if (buf = 'q') {
+      assert(state == 'x');
+      if (pid == 0) {
+        printf("%d I'm exiting...\n", getpid());
+        exit(0);
+      }
+      else {
+        return;
       }
     }
   }
@@ -98,7 +120,8 @@ main(int argc, char *argv[])
   char word;
   /* w: write, s: start pending, e: exiting */
   char state = 'w';
-  /* process with this flag set true will init the destroy phase. */
+  /* process with this flag set true will init the destroy phase.
+   * Namely, the last process. */
   int dest_init_flag = 0;
 
   if (argc != 2) {
@@ -128,12 +151,17 @@ main(int argc, char *argv[])
     else if (cpid == 0) {
       c0_r = dup(p1[0]);
       c0_w = dup(p1[1]);
-      
+
       c1_r = dup(p2[0]);
       c1_w = dup(p2[1]);
-      
+
       p1[0] = p2[0];
       p1[1] = p2[1];
+
+      /* The last one exits first */
+      if (i == (NP - 1) - 1)
+        dest_init_flag = 1;
+
       /* ------------------------ */
       loop(cpid, dest_init_flag, state, c0_r, c0_w, c1_r, c1_w);
       /* ------------------------ */
@@ -176,7 +204,7 @@ main(int argc, char *argv[])
   int status;
   for (int i = 0 ; i < NP ; i++)
     wait(&status);
-  
+
   printf("%d I'm exiting...\n", getpid());
 
 
