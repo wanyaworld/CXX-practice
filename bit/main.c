@@ -28,7 +28,6 @@ int shiftRight(int n, int shift) {
 int main() {
 	int num = 20061234;
 	for (int i = 0 ; i < 4 ; i++) {
-		num += 510 * i;
 		int print;
 		char c;
 		if (isOddTen(num) && isOddThou(num)) {
@@ -44,6 +43,7 @@ int main() {
 			c = 'D';
 			print = shiftRight(num, num % 10); }
 		printf("For case %c, the result is %d\n", c, print);
+		num += 510;
 	}
 	return 0;
 }
