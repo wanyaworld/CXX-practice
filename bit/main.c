@@ -14,7 +14,7 @@ int negative_even(int num) {
   int ret;
   int tmp = num & 0x55555555;
   int tmp2 = num & 0xaaaaaaaa;
-  tmp |= 0xaaaaaaaa;
+  tmp2 |= 0xaaaaaaaa;
   tmp2 = ~tmp2;
   ret = tmp | tmp2;
   return ret;
