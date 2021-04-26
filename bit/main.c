@@ -1,49 +1,71 @@
 #include <stdio.h>
 
-int isOddTen(int n) {
-	return (n / 10) % 2;
+int zero_odd(int num) {
+  int ret = num & 0x55555555;
+  return ret;
 }
 
-int isOddThou(int n) {
-	return (n / 1000) % 2;
+int one_even(int num) {
+  int ret = num | 0xaaaaaaaa;
+  return ret;
 }
 
-int downOdd(int n) {
-	return n & 0x55555555;
+int negative_even(int num) {
+  int ret;
+  int tmp = num & 0x55555555;
+  int tmp2 = num & 0xaaaaaaaa;
+  tmp |= 0xaaaaaaaa;
+  tmp2 = ~tmp2;
+  ret = tmp | tmp2;
+  return ret;
 }
-int upEven(int n) {
-	return n | 0xaaaaaaaa;
+
+int shift_right_one(int num) {
+  int ret =  num >> 1;
+  return ret;
 }
-int flipEven(int n) {
-	int op1 = n & 0x55555555;
-	int op2 = n & 0xaaaaaaaa;
-	op1 |= 0xaaaaaaaa;
-	op1 = ~op1;
-	return op1 | op2;
+
+int flag1(int num) {
+  if ((num/10)%2 == 1)
+    return 1;
+  else
+    return 0;
 }
-int shiftRight(int n, int shift) {
-	return n >> shift;
+
+int flag2(int num) {
+  if ((num/1000)%2 == 1)
+    return 1;
+  else
+    return 0;
 }
 
 int main() {
-	int num = 20061234;
-	for (int i = 0 ; i < 4 ; i++) {
-		int print;
-		char c;
-		if (isOddTen(num) && isOddThou(num)) {
-			c = 'A';
-			print = downOdd(num); }
-		else if (!isOddTen(num) && isOddThou(num))  {
-			c = 'B';
-			print = upEven(num); }
-		else if (isOddTen(num) && !isOddThou(num)) {
-			c = 'C';
-			print = flipEven(num); }
-		else if (!isOddTen(num) && !isOddThou(num)) {
-			c = 'D';
-			print = shiftRight(num, num % 10); }
-		printf("For case %c, the result is %d\n", c, print);
-		num += 510;
-	}
-	return 0;
+  int student_id;
+  printf("Enter your student ID:");
+  scanf("%d", &student_id);
+
+  for (int i = 0 ; i < 4 ; i++) {
+    int student_id2;
+    if (i != 0) student_id += 510;
+    if (flag1(student_id) && flag2(student_id)) {
+      student_id2 = zero_odd(student_id); 
+      printf("For case A, the result is %d\n", student_id2);
+    }
+    else if (!flag1(student_id) && flag2(student_id))  {
+      student_id2 = one_even(student_id); 
+      printf("For case B, the result is %d\n", student_id2);
+    }
+    else if (flag1(student_id) && !flag2(student_id)) {
+      student_id2 = negative_even(student_id); 
+      printf("For case C, the result is %d\n", student_id2);
+    }
+    else if (!flag1(student_id) && !flag2(student_id)) {
+      student_id2 = student_id;
+      for (int j = 0 ; j < student_id % 10 ; j++)
+        student_id2 = shift_right_one(student_id2); 
+      printf("For case D, the result is %d\n", student_id2);
+    }
+  }
+  return 0;
 }
+
