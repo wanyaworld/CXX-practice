@@ -174,7 +174,8 @@ int main() {
             if (!alloc_double(val_double, data_name)) continue;
           }
           else if (!strcmp(type_name, "char")) {
-            scanf("%c", &val_char);
+            scanf("%d", &val_int);
+            val_char = (char)val_int;
             if (!alloc_char(val_char, data_name)) continue;
           }
         }
@@ -203,27 +204,31 @@ int main() {
       printf("%s\n", string_dealloc_name);
       scanf("%s", data_name);
       unsigned int pos;
-      if (!delete_metadata(data_name, &pos, &size)) {
-        printf("%s has never been allocated\n", data_name);
-        continue;
+      int is_first = 1;
+      while (1) {
+        if (!delete_metadata(data_name, &pos, &size)) {
+          if (is_first)
+            printf("%s has never been allocated\n", data_name);
+          continue;
+        }
+        is_first = 0;
+        if (size == sizeof(int)) {
+          dealloc_int(pos);
+        }
+        else if (size == sizeof(double)) {
+          dealloc_double(pos);
+        }
+        else if (size == sizeof(char)) {
+          dealloc_char(pos);
+        }
+        else {
+          printf("int nor double allocated\n");
+          continue;
+        }
+        printf("%s %s\n", data_name, string_noti_success_de);
+        printf("%s\n", string_result);
+        dump_mem(mm.start, mm.max_size);
       }
-      if (size == sizeof(int)) {
-        dealloc_int(pos);
-      }
-      else if (size == sizeof(double)) {
-        dealloc_double(pos);
-      }
-      else if (size == sizeof(char)) {
-        dealloc_char(pos);
-      }
-      else {
-        printf("int nor double allocated\n");
-        continue;
-      }
-      printf("%s %s\n", data_name, string_noti_success_de);
-      printf("%s\n", string_result);
-      dump_mem(mm.start, mm.max_size);
-
     }
     else {
       printf("Invalid req type\n");
