@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MEM_SIZE 8
+#define MEM_SIZE 256
 #define MAX_OBJ MEM_SIZE/sizeof(int)
 
 struct metadata {
