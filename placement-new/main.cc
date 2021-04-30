@@ -4,7 +4,9 @@
 class MyClass {
 public:
 	int a, b;
-	~MyClass() {}
+	char *p;
+	MyClass() { p = new char[0x100]; }
+	~MyClass() { delete [] p; }
 };
 
 int main() {
@@ -14,11 +16,11 @@ int main() {
 	/* placement-new upon buffer */
 	MyClass *pmc_place = new (buf) MyClass();
 
-	/* delete buffer first */
-	delete [] buf;
-	
-	/* then manually call destructor */
+	/* manually call destructor first */
 	pmc_place->~MyClass();
+	
+	/* then delete buffer */
+	delete [] buf;
 	
 	delete pmc;
 	
