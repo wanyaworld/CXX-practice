@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MEM_SIZE 256
+#define MEM_SIZE 8
 #define MAX_OBJ MEM_SIZE/sizeof(int)
 
 struct metadata {
@@ -39,6 +39,9 @@ located successfully";
 char string_result[256] = "Here is the mem dump!";
 char string_dealloc_name[256] = "What is the name\
 of data you want to deallocate?";
+char string_memory_full[256] = "There is not enou\
+gh memory for the data, you can only use %d byte(\
+s)";
 
 void init() {
   mm.start = malloc(MEM_SIZE);
@@ -57,11 +60,12 @@ int insert_metadata(char* name, unsigned int pos, unsigned int size) {
 int delete_metadata(char* name, unsigned int* ppos, int *size) {
   for (int i = 0 ; i < mm.cur_objs ; i++) {
     if (!strcmp(name, mm.md_list[i].data_name)) {
+      *ppos = mm.md_list[i].pos;
+      *size = mm.md_list[i].size;
       for (int j = i ; j + 1 < mm.cur_objs ; j++) {
         mm.md_list[j] = mm.md_list[j + 1];
       }
-      *ppos = mm.md_list[i].pos;
-      *size = mm.md_list[i].size;
+      (mm.cur_objs)--;
       return 1;
     }
   }
@@ -81,42 +85,66 @@ void dump_mem(const void *mem, size_t len) {
 }
 
 int mem_available(int size) {
-  if (mm.max_size - mm.cur_size >= size) return 1;
-  else return 0;
+  if (mm.max_size - mm.cur_size >= size) {
+    return 1;
+  }
+  printf(string_memory_full, mm.max_size);
+  printf("\n");
+  return 0;
+}
+
+char alloc_char(char val, char* data_name) {
+  if (!mem_available(sizeof(val))) return 0;
+  void *addr = (void*)((unsigned long long)mm.cur_size + (unsigned long long)mm.start);
+  *(char*)addr = val;
+  insert_metadata(data_name, mm.cur_size, sizeof(char));
+  mm.cur_size += sizeof(val);
 }
 
 int alloc_int(int val, char* data_name) {
   if (!mem_available(sizeof(val))) return 0;
-  ((int*)mm.start)[mm.cur_size / sizeof(int)]= val;
+  void *addr = (void*)((unsigned long long)mm.cur_size + (unsigned long long)mm.start);
+  *(int*)addr = val;
   insert_metadata(data_name, mm.cur_size, sizeof(int));
   mm.cur_size += sizeof(val);
 }
 
 int alloc_double(double val, char* data_name) {
   if (!mem_available(sizeof(val))) return 0;
-  ((double*)mm.start)[mm.cur_size / sizeof(double)] = val;
+  void *addr = (void*)((unsigned long long)mm.cur_size + (unsigned long long)mm.start);
+  *(double*)addr = val;
   insert_metadata(data_name, mm.cur_size, sizeof(double));
   mm.cur_size += sizeof(val);
 }
 
+void dealloc_char(unsigned int p) {
+  mm.cur_size -= sizeof(char);
+  unsigned long long pos = (unsigned long long)p;
+  void *dest = (void*)(pos + (unsigned long long)mm.start);
+  void *src = (void*)(pos + (unsigned long long)mm.start + sizeof(char));
+  void *rem = (void*)((unsigned long long)mm.start + mm.cur_size);
+  memmove(dest, src, mm.max_size - sizeof(char));
+  memset(rem, 0, sizeof(char));
+}
+
 void dealloc_int(unsigned int p) {
+  mm.cur_size -= sizeof(int);
   unsigned long long pos = (unsigned long long)p;
   void *dest = (void*)(pos + (unsigned long long)mm.start);
   void *src = (void*)(pos + (unsigned long long)mm.start + sizeof(int));
-  void *rem = (void*)((unsigned long long)mm.start + mm.max_size - sizeof(int));
+  void *rem = (void*)((unsigned long long)mm.start + mm.cur_size);
   memmove(dest, src, mm.max_size - sizeof(int));
   memset(rem, 0, sizeof(int));
-  mm.cur_size -= sizeof(int);
 }
 
 void dealloc_double(unsigned int p) {
+  mm.cur_size -= sizeof(double);
   unsigned long long pos = (unsigned long long)p;
   void *dest = (void*)(pos + (unsigned long long)mm.start);
   void *src = (void*)(pos + (unsigned long long)mm.start + sizeof(double));
-  void *rem = (void*)((unsigned long long)mm.start + mm.max_size - sizeof(double));
+  void *rem = (void*)((unsigned long long)mm.start + mm.cur_size);
   memmove(dest, src, mm.max_size - sizeof(double));
   memset(rem, 0, sizeof(double));
-  mm.cur_size -= sizeof(double);
 }
 
 int main() {
@@ -124,6 +152,7 @@ int main() {
   while (1) {
     int req_type, size, val_int;
     double val_double;
+    char val_char;
     char data_name[256], type_name[256];
     printf("%s\n", string_question_type);
     scanf("%d", &req_type);
@@ -144,6 +173,10 @@ int main() {
             scanf("%lf", &val_double);
             if (!alloc_double(val_double, data_name)) continue;
           }
+          else if (!strcmp(type_name, "char")) {
+            scanf("%c", &val_char);
+            if (!alloc_char(val_char, data_name)) continue;
+          }
         }
       }
       else if (!strcmp(type_name, "int")) {
@@ -155,6 +188,12 @@ int main() {
         printf("%s\n", string_question_val_detail);
         scanf("%lf", &val_double);
         if (!alloc_double(val_double, data_name)) continue;
+      }
+      else if (!strcmp(type_name, "char")) {
+        printf("%s\n", string_question_val_detail);
+        scanf("%d", &val_int);
+        val_char = (char)val_int;
+        if (!alloc_char(val_char, data_name)) continue;
       }
       printf("%s %s\n", data_name, string_noti_success);
       printf("%s\n", string_result);
@@ -174,12 +213,16 @@ int main() {
       else if (size == sizeof(double)) {
         dealloc_double(pos);
       }
+      else if (size == sizeof(char)) {
+        dealloc_char(pos);
+      }
       else {
         printf("int nor double allocated\n");
         continue;
       }
       printf("%s %s\n", data_name, string_noti_success_de);
       printf("%s\n", string_result);
+      dump_mem(mm.start, mm.max_size);
 
     }
     else {
